@@ -1,0 +1,4 @@
+,method,recall@10,mrr,total_samples,skipped
+sliding_window,sliding_window,0.5555555555555556,0.22433612748709789,45,35
+html_aware,html_aware,1.0,0.43523119392684606,46,34
+semantic_similarity,semantic_similarity,0.8181818181818182,0.39121689547825916,44,36

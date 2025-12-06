@@ -124,7 +124,7 @@ def late_chunking_encode(html_text, chunks):
 # ---------------------------------------------------
 # ⑤ Simple sliding window chunker
 # ---------------------------------------------------
-def sliding_window_chunk(text, window=128, overlap=32):
+def sliding_window_chunk(text, window=512, overlap=102):
     words = text.split()
     step = window - overlap
     out = []
@@ -133,6 +133,50 @@ def sliding_window_chunk(text, window=128, overlap=32):
         out.append(" ".join(words[i:i+window]))
         i += step
     return out
+
+def html_aware_chunk(html_text, max_chunk_size=512):
+    """HTML-structure-aware chunking."""
+    soup = BeautifulSoup(html_text, 'html.parser')
+    chunks = []
+    structural_tags = ['h1', 'h2', 'h3', 'h4', 'h5', 'h6', 'p', 'li', 'td', 'div']
+    
+    current_chunk = []
+    current_word_count = 0
+    
+    def add_chunk():
+        if current_chunk:
+            chunks.append(" ".join(current_chunk))
+    
+    for element in soup.find_all(structural_tags):
+        text = element.get_text(strip=True)
+        if not text:
+            continue
+        
+        words = text.split()
+        
+        if current_word_count + len(words) > max_chunk_size and current_chunk:
+            add_chunk()
+            current_chunk = []
+            current_word_count = 0
+        
+        current_chunk.extend(words)
+        current_word_count += len(words)
+        
+        if element.name in ['h1', 'h2', 'h3'] and current_word_count > max_chunk_size * 0.5:
+            add_chunk()
+            current_chunk = []
+            current_word_count = 0
+    
+    add_chunk()
+    
+    # Fallback
+    if not chunks:
+        words = html_text.split()
+        for i in range(0, len(words), max_chunk_size):
+            chunk_words = words[i:i + max_chunk_size]
+            chunks.append(" ".join(chunk_words))
+    
+    return chunks
 
 
 # ---------------------------------------------------
@@ -168,9 +212,11 @@ def evaluate(dataset_path):
             doc_tokens = item["document_tokens"]
 
             chunks = sliding_window_chunk(
-                BeautifulSoup(html, "html.parser").get_text(" ", strip=True),
-                window=128, overlap=32
+                # BeautifulSoup(html, "html.parser").get_text(" ", strip=True),
+                html,
+                window=512, overlap=102
             )
+            # chunks = html_aware_chunk(html, max_chunk_size=512)
             if not chunks:
                 skipped += 1
                 continue

@@ -18,10 +18,10 @@ from typing import List, Tuple
 import numpy as np
 
 
-DEV_PATH = Path("data/v1.0-simplified_nq-dev-all.jsonl")
-OUT_SHORT = Path("data/nq_dev_short.jsonl")
-OUT_MEDIUM = Path("data/nq_dev_medium.jsonl")
-OUT_LONG = Path("data/nq_dev_long.jsonl")
+DEV_PATH = Path("data/v1.0-simplified_nq-dev-all_cleaned.jsonl")
+OUT_SHORT = Path("data/nq_dev_short_cleaned.jsonl")
+OUT_MEDIUM = Path("data/nq_dev_medium_cleaned.jsonl")
+OUT_LONG = Path("data/nq_dev_long_cleaned.jsonl")
 
 
 def load_dev_lengths(dev_path: Path) -> List[int]:

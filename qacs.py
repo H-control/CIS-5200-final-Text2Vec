@@ -11,6 +11,8 @@ import re
 from typing import List, Tuple, Dict, Optional, Any, cast
 import bs4
 from collections import defaultdict
+import time
+from pathlib import Path
 
 # Check GPU availability
 device = "cuda" if torch.cuda.is_available() else "mps" if torch.backends.mps.is_available() else "cpu"
@@ -24,16 +26,18 @@ SEMANTIC_THRESHOLD = 0.5
 
 # Datasets
 DATASETS = {
-    "short": "data/nq_filtered_short.jsonl",
-    "medium": "data/nq_filtered_medium.jsonl",
-    "long": "data/nq_filtered_long.jsonl",
+    "short": "data/nq_dev_short_cleaned.jsonl",
+    # "short": "data/nq_filtered_short.jsonl",
+    # "medium": "data/nq_dev_medium_cleaned.jsonl",
+    # "long": "data/nq_dev_long_cleaned.jsonl",
 }
 
 # Model
 MODEL_NAME = "avsolatorio/GIST-Embedding-v0"
 
 # Methods to compare
-CHUNKING_STRATEGIES = ["sliding_window", "html_aware", "semantic_similarity", "hybrid_html_semantic", "dom_block_tree"]
+# CHUNKING_STRATEGIES = ["sliding_window", "html_aware", "semantic_similarity", "hybrid_html_semantic", "dom_block_tree", "qacs"]
+CHUNKING_STRATEGIES = ["sliding_window", "html_aware", "semantic_similarity", "dom_block_tree", "qacs"]
 
 print(f"Loading model: {MODEL_NAME}")
 model = SentenceTransformer(MODEL_NAME, device=device)
@@ -140,78 +144,78 @@ def semantic_similarity_chunk(text, model, threshold=0.5, max_chunk_size=512):
     
     return chunks
 
-# Extension1: Hybrid HTML-Semantic Chunking
-def hybrid_html_semantic_chunk(html_text, model, threshold=0.5, max_chunk_size=512):
-    """
-    Hybrid chunking:
-    1. Use HTML heading hierarchy (<h1>-<h6>) to segment the document into sections.
-    2. Inside each section, apply semantic similarity-based chunking.
-    Returns a list of final chunks (strings).
-    """
-    soup = BeautifulSoup(html_text, 'html.parser')
+# # Extension1: Hybrid HTML-Semantic Chunking
+# def hybrid_html_semantic_chunk(html_text, model, threshold=0.5, max_chunk_size=512):
+#     """
+#     Hybrid chunking:
+#     1. Use HTML heading hierarchy (<h1>-<h6>) to segment the document into sections.
+#     2. Inside each section, apply semantic similarity-based chunking.
+#     Returns a list of final chunks (strings).
+#     """
+#     soup = BeautifulSoup(html_text, 'html.parser')
 
-    # Step 1: collect sections by heading structure
-    sections = []
-    current_section = []
+#     # Step 1: collect sections by heading structure
+#     sections = []
+#     current_section = []
 
-    for element in soup.find_all(['h1','h2','h3','h4','h5','h6','p','li','td','div']):
-        text = element.get_text(strip=True)
-        if not text:
-            continue
+#     for element in soup.find_all(['h1','h2','h3','h4','h5','h6','p','li','td','div']):
+#         text = element.get_text(strip=True)
+#         if not text:
+#             continue
 
-        # Start a new section on any heading
-        if element.name in ['h1','h2','h3','h4','h5','h6']:
-            if current_section:
-                sections.append(" ".join(current_section))
-                current_section = []
-        current_section.append(text)
+#         # Start a new section on any heading
+#         if element.name in ['h1','h2','h3','h4','h5','h6']:
+#             if current_section:
+#                 sections.append(" ".join(current_section))
+#                 current_section = []
+#         current_section.append(text)
 
-    if current_section:
-        sections.append(" ".join(current_section))
+#     if current_section:
+#         sections.append(" ".join(current_section))
 
-    # Step 2: apply semantic chunking inside each section
-    final_chunks = []
+#     # Step 2: apply semantic chunking inside each section
+#     final_chunks = []
 
-    for section in sections:
-        sentences = re.split(r'(?<=[.!?])\s+', section)
-        sentences = [s.strip() for s in sentences if s.strip()]
+#     for section in sections:
+#         sentences = re.split(r'(?<=[.!?])\s+', section)
+#         sentences = [s.strip() for s in sentences if s.strip()]
 
-        if len(sentences) <= 1:
-            # Short section directly appended
-            final_chunks.append(section)
-            continue
+#         if len(sentences) <= 1:
+#             # Short section directly appended
+#             final_chunks.append(section)
+#             continue
         
-        # Embed sentences
-        embeddings = model.encode(sentences, convert_to_tensor=True, show_progress_bar=False)
+#         # Embed sentences
+#         embeddings = model.encode(sentences, convert_to_tensor=True, show_progress_bar=False)
         
-        # Compute similarities between adjacent sentences
-        similarities = []
-        for i in range(len(embeddings) - 1):
-            sim = util.cos_sim(embeddings[i], embeddings[i+1])[0][0].item()
-            similarities.append(sim)
+#         # Compute similarities between adjacent sentences
+#         similarities = []
+#         for i in range(len(embeddings) - 1):
+#             sim = util.cos_sim(embeddings[i], embeddings[i+1])[0][0].item()
+#             similarities.append(sim)
         
-        # Build chunks within the section
-        current_chunk = [sentences[0]]
-        current_len = len(sentences[0].split())
+#         # Build chunks within the section
+#         current_chunk = [sentences[0]]
+#         current_len = len(sentences[0].split())
 
-        for i, sim in enumerate(similarities):
-            next_sentence = sentences[i+1]
-            next_len = len(next_sentence.split())
+#         for i, sim in enumerate(similarities):
+#             next_sentence = sentences[i+1]
+#             next_len = len(next_sentence.split())
 
-            # boundary: semantic break OR token overflow
-            if sim < threshold or current_len + next_len > max_chunk_size:
-                final_chunks.append(" ".join(current_chunk))
-                current_chunk = [next_sentence]
-                current_len = next_len
-            else:
-                current_chunk.append(next_sentence)
-                current_len += next_len
+#             # boundary: semantic break OR token overflow
+#             if sim < threshold or current_len + next_len > max_chunk_size:
+#                 final_chunks.append(" ".join(current_chunk))
+#                 current_chunk = [next_sentence]
+#                 current_len = next_len
+#             else:
+#                 current_chunk.append(next_sentence)
+#                 current_len += next_len
 
-        # Add the last chunk inside section
-        if current_chunk:
-            final_chunks.append(" ".join(current_chunk))
+#         # Add the last chunk inside section
+#         if current_chunk:
+#             final_chunks.append(" ".join(current_chunk))
 
-    return final_chunks
+#     return final_chunks
 
 #Extension2: DOM Block Tree Chunking
 
@@ -274,8 +278,9 @@ def build_block_tree(html: str, max_node_words: int=512, zh_char=False) -> Tuple
                 new_tag.append(child)
             target_trees = [(new_tag, ["html"], True)]
 
-    html=str(soup)
-    return target_trees, html
+    # html=str(soup)
+    # return target_trees, html
+    return target_trees, ""
 
 def dom_block_tree_chunk(html_text, max_node_words=512):
     block_tree, _ = build_block_tree(html_text, max_node_words=max_node_words)
@@ -474,8 +479,11 @@ def evaluate_method(model, dataset_path, chunking_strategy, method_name, **chunk
     }
     num_chunks_list = []
     
+    start_time = time.perf_counter()
+    processed_lines = 0
     with open(dataset_path, "r", encoding="utf-8") as f:
         for line in tqdm(f, desc=f"Evaluating {method_name}"):
+            processed_lines += 1
             try:
                 item = json.loads(line)
             except Exception:
@@ -563,6 +571,11 @@ def evaluate_method(model, dataset_path, chunking_strategy, method_name, **chunk
     ndcg = compute_ndcg(rank_list)
 
     avg_num_chunks = float(np.mean(num_chunks_list)) if num_chunks_list else 0.0
+    elapsed = time.perf_counter() - start_time
+    items_per_sec = float(processed_lines) / elapsed if elapsed > 0 else 0.0
+    minutes = int(elapsed // 60)
+    seconds = int(elapsed % 60)
+    tqdm_time_str = f"[{minutes:02d}:{seconds:02d}, {items_per_sec:.2f}it/s]"
     
     return {
         "method": method_name,
@@ -573,6 +586,10 @@ def evaluate_method(model, dataset_path, chunking_strategy, method_name, **chunk
         "skipped": skipped,
         # "skip_reasons": skip_reasons,
         "avg_num_chunks": avg_num_chunks
+        ,
+        "elapsed_seconds": elapsed,
+        "items_per_sec": items_per_sec,
+        "tqdm_time_str": tqdm_time_str,
     }
 
 
@@ -583,11 +600,11 @@ print("Running Chunking Strategy Comparison (per dataset)")
 print("="*70)
 
 strategies_map = {
-    # "sliding_window": (sliding_window_chunk, {"window": WINDOW, "overlap": OVERLAP}),
-    # "html_aware": (html_aware_chunk, {"max_chunk_size": WINDOW}),
-    # "semantic_similarity": (semantic_similarity_chunk, {"threshold": SEMANTIC_THRESHOLD, "max_chunk_size": WINDOW}),
+    "sliding_window": (sliding_window_chunk, {"window": WINDOW, "overlap": OVERLAP}),
+    "html_aware": (html_aware_chunk, {"max_chunk_size": WINDOW}),
+    "semantic_similarity": (semantic_similarity_chunk, {"threshold": SEMANTIC_THRESHOLD, "max_chunk_size": WINDOW}),
     # "hybrid_html_semantic": (hybrid_html_semantic_chunk, {"threshold": SEMANTIC_THRESHOLD, "max_chunk_size": WINDOW}),
-    # "dom_block_tree": (dom_block_tree_chunk, {"max_node_words": WINDOW}),
+    "dom_block_tree": (dom_block_tree_chunk, {"max_node_words": WINDOW}),
     "qacs": (qacs_chunk, {"fine_size": 128, "coarse_size": 512}),
 }
 
@@ -608,6 +625,17 @@ for ds_name, ds_path in DATASETS.items():
             method_name=strategy_name,
             **params
         )
+        # Save per-strategy result immediately so partial runs are preserved
+        try:
+            single_row = ds_results[strategy_name].copy()
+            single_row["dataset"] = ds_name
+            out_dir = Path("results")
+            out_dir.mkdir(parents=True, exist_ok=True)
+            out_path = out_dir / f"chunking_result_{ds_name}_{strategy_name}.csv"
+            pd.DataFrame([single_row]).to_csv(out_path, index=False)
+            print(f"Saved per-strategy result to {out_path}")
+        except Exception as e:
+            print(f"Warning: failed to save per-strategy result for {strategy_name} on {ds_name}: {e}")
         print(
             f"  Recall@10: {ds_results[strategy_name]['recall@10']:.4f}, "
             f"MRR: {ds_results[strategy_name]['mrr']:.4f}, "

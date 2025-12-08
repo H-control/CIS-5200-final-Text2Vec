@@ -27,9 +27,8 @@ SEMANTIC_THRESHOLD = 0.5
 # Datasets
 DATASETS = {
     "short": "data/nq_dev_short_cleaned.jsonl",
-    # "short": "data/nq_filtered_short.jsonl",
-    # "medium": "data/nq_dev_medium_cleaned.jsonl",
-    # "long": "data/nq_dev_long_cleaned.jsonl",
+    "medium": "data/nq_dev_medium_cleaned.jsonl",
+    "long": "data/nq_dev_long_cleaned.jsonl",
 }
 
 # Model

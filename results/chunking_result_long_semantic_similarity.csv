@@ -1,2 +1,0 @@
-method,recall@10,mrr,ndcg,total_samples,skipped,avg_num_chunks,elapsed_seconds,items_per_sec,tqdm_time_str,dataset
-semantic_similarity,0.5618789521228545,0.27138156756884385,0.4209594727947741,1107,175,41.34009360374415,2212.7171828729997,0.5793781554746399,"[36:52, 0.58it/s]",long

@@ -1,2 +1,0 @@
-method,recall@10,mrr,ndcg,total_samples,skipped,avg_num_chunks,elapsed_seconds,items_per_sec,tqdm_time_str,dataset
-dom_block_tree,0.6375952582557155,0.28406797220821156,0.4325758338632378,1181,63,110.74839228295819,432.11010553900087,2.8788958741158637,"[07:12, 2.88it/s]",medium

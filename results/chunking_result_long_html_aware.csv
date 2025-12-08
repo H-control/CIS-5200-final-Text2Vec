@@ -1,2 +1,0 @@
-method,recall@10,mrr,ndcg,total_samples,skipped,avg_num_chunks,elapsed_seconds,items_per_sec,tqdm_time_str,dataset
-html_aware,0.8701298701298701,0.3266856237438328,0.4831930029703726,1232,50,37.3588143525741,787.6488128640001,1.627628936985851,"[13:07, 1.63it/s]",long

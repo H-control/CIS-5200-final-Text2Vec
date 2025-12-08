@@ -1,0 +1,2 @@
+method,recall@10,mrr,ndcg,total_samples,skipped,avg_num_chunks,elapsed_seconds,items_per_sec,tqdm_time_str,dataset
+sliding_window,0.3568202348690154,0.15689960100483982,0.31872945428587834,1107,175,57.25039001560062,588.6406347279999,2.1778992552771843,"[09:48, 2.18it/s]",long
